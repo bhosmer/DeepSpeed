@@ -184,15 +184,13 @@ class DeepSpeedTransformerFunction(Function):
 
         inp_size = input.size()
         if inp_size[1] % 16 != 0:
-            input = torch.cat((input,
-                               torch.randn((inp_size[0],
-                                            (16 - (inp_size[1] % 16)),
-                                            inp_size[2]),
-                                           device=input.device,
-                                           dtype=input.dtype)),
-                              1)
-            input_mask = torch.cat((input_mask, torch.ones((inp_size[0], input_mask.shape[1], input_mask.shape[2], \
-                                            (16 - (inp_size[1] % 16))), device=input_mask.device, dtype=input_mask.dtype) * -10000), 3)
+            fill_size = (inp_size[0], (16 - (inp_size[1] % 16)), inp_size[2])
+            input_fill = torch.randn(fill_size, device=input.device, dtype=input.dtype)
+            input = torch.cat((input, input_fill), 1)
+            if input_mask is not None:
+                assert inp_size == input_mask.size(), f'input.size() {inp_size} != input_mask.size() {input_mask.size()}'
+                mask_fill = torch.ones(fill_size, device=input_mask.device, dtype=input_mask.dtype) * -10000
+                input_mask = torch.cat((input_mask, mask_fill), 1)
 
         (output,
          inp_norm,
